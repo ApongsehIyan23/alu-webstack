@@ -1,0 +1,34 @@
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    maxconn 2000
+    user haproxy
+    group haproxy
+
+defaults
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    timeout connect 5000ms
+    timeout client  10000ms
+    timeout server  10000ms
+
+# HTTP (80): redirect to HTTPS
+frontend http_front
+    bind 0.0.0.0:80
+    http-request redirect scheme https code 301 unless { ssl_fc }
+
+# HTTPS (443): SSL termination
+frontend https_front
+    bind 0.0.0.0:443 ssl crt /etc/haproxy/certs/www.boldau.tech.pem
+    default_backend web_servers
+
+backend web_servers
+    balance roundrobin
+    option httpchk GET /
+    http-check expect status 200
+    option httpclose
+    option forwardfor
+    server 7033-web-01 3.88.168.171:80 check
+    server 7033-web-02 18.205.191.183:80 check
